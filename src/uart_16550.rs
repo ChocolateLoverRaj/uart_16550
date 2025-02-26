@@ -5,9 +5,14 @@ use crate::{register::Uart16550Register, LineStsFlags, WouldBlockError};
 /// Trait for using a 16550 compatible interface regardless of how it's connected
 pub trait Uart16550: fmt::Write {
     /// Initializes the UART.
+    fn init_with_dl(&mut self, dll: u8, dlm: u8);
+
+    /// Initializes the UART.
     ///
     /// The default configuration of [38400/8-N-1](https://en.wikipedia.org/wiki/8-N-1) is used.
-    fn init(&mut self);
+    fn init(&mut self) {
+        self.init_with_dl(0x03, 0x00);
+    }
 
     /// Sends a byte on the serial port.
     fn send(&mut self, data: u8);
@@ -49,7 +54,7 @@ impl<R: Uart16550Register> Uart16550Registers<R> {
 }
 
 impl<R: Uart16550Register> Uart16550 for Uart16550Registers<R> {
-    fn init(&mut self) {
+    fn init_with_dl(&mut self, dll: u8, dlm: u8) {
         // Disable interrupts
         self.int_en.write(0x00);
 
@@ -57,8 +62,8 @@ impl<R: Uart16550Register> Uart16550 for Uart16550Registers<R> {
         self.line_ctrl.write(0x80);
 
         // Set maximum speed to 38400 bps by configuring DLL and DLM
-        self.data.write(0x03);
-        self.int_en.write(0x00);
+        self.data.write(dll);
+        self.int_en.write(dlm);
 
         // Disable DLAB and set data word length to 8 bits
         self.line_ctrl.write(0x03);
